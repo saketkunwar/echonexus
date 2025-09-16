@@ -1,0 +1,4 @@
+google_cloud_aiplatform==1.92.0
+newspaper3k==0.2.8
+pandas==2.3.2
+protobuf==6.32.1
