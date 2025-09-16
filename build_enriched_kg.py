@@ -126,7 +126,6 @@ class EnrichedKGAgent:
             FROM `bigquery-public-data.world_bank_wdi.indicators_data`
             WHERE
               country_code IN (SELECT DISTINCT country_code FROM `{temp_points_table_id}`)
-              AND year = 2021
             GROUP BY country_code
           )
         -- Final SELECT to join all working enrichment sources
