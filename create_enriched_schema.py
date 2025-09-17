@@ -3,7 +3,7 @@
 from google.cloud import bigquery
 from config import *
 TABLE_ID = ENRICHED_KG_TABLE
-
+LOCATION = BIGQUERY_LOCATION
 
 def create_enriched_knowledge_graph_table():
     """
