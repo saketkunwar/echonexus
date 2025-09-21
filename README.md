@@ -1,152 +1,128 @@
 # EchoNexus: High-Fidelity Neuro-Symbolic Agent for Environmental Intelligence
 
 ## Overview
-EchoNexus transforms vague, unstructured environmental news into **structured, verifiable intelligence**.  
-Using a **Neuro-Symbolic pipeline** built entirely in **Google BigQuery** with Gemini models, it fuses:
-- **News text (GDELT)**
-- **Earth observation (MODIS + Dynamic World)**
+EchoNexus transforms unstructured environmental news into **structured, verifiable intelligence**.  
+Using a **Neuro-Symbolic pipeline** built on **Google BigQuery AI** with Gemini models, it fuses:  
+- **News text (GDELT)**  
+- **Earth observation (MODIS Net Primary Production + Dynamic World land cover)**  
 - **Biodiversity indicators (GBIF species richness)**  
 
-The result is a **queryable knowledge graph** enriched with both symbolic structure and neural semantic understanding, enabling natural language questions to be translated into precise BigQuery queries.
+The result is a **knowledge graph** enriched with both symbolic structure and neural semantic embeddings, enabling **natural language queries in BigQuery**.
 
 ---
 
 ## Key Features
 - **Knowledge Graph Backbone**  
-  - Extract entities, relationships, and geospatial context from GDELT articles using **Gemini 2.5**.  
-  - Each event is grounded with latitude/longitude and ISO country code, bridging text with spatial data.  
+  - Extracts entities, relationships, and geospatial context from GDELT articles using **Gemini 2.5**.  
+  - Events are grounded with **latitude/longitude + ISO country code**.  
 
-- **Ground-Truth Enrichment**
+- **Ground-Truth Enrichment**  
   - **MODIS NPP** (`bigquery-public-data.modis_terra_net_primary_production.MODIS_MOD17A3HGF`)  
-    Adds annual **net primary production** values to measure vegetation productivity and detect physical impacts of deforestation or pollution.  
+    → Annual vegetation productivity (kg C/m²/year).  
   - **GBIF Species Richness** (`bigquery-public-data.gbif.occurrences`)  
-    Adds biodiversity context by counting distinct species occurrences within 1 km of each event location.  
+    → Counts distinct species occurrences within 1 km of each event.  
   - **Dynamic World Land Cover** (`GOOGLE/DYNAMICWORLD/V1` via Earth Engine)  
-    Enriches each event with **dominant land cover type** (e.g., trees, crops, water), giving context on where the event happened.  
+    → Adds dominant land cover type (trees, crops, water, built-up).  
 
-- **Neural Semantic Layer**
-  - Embeds entities using **BigQuery ML.GENERATE_EMBEDDING** with `text-embedding-004`.  
-  - Enables **semantic similarity search** (e.g., “deluge” ≈ “flooding”) instead of brittle keyword filters.  
+- **Neural Semantic Layer**  
+  - Embeds entities using **Vertex AI `text-embedding-004`**.  
+  - Supports **semantic similarity search** via BigQuery **VECTOR_SEARCH**.  
 
-- **Natural Language Q&A**
-  - **Gemini 2.5 Pro** converts user questions into executable SQL queries.  
-  - Hybrid planner decides when to use **semantic search** (neural) vs. **symbolic filters** (numeric thresholds).  
-  - Returns results as enriched tables or maps with direct grounding in environmental data.
+- **Natural Language Q&A**  
+  - **Gemini 2.5 Pro** converts natural language into SQL queries.  
+  - Supports **hybrid querying** (symbolic + semantic).  
 
 ---
 
 ## Repository Structure
 ```
 .
-├── build_enriched_kg.py          # Pipeline to fetch GDELT, extract KG, enrich with MODIS + GBIF + Dynamic World
-├── create_enriched_schema.py     # Creates BigQuery tables for storing KG
-├── enrich_kg_with_embeddings.py  # Adds embeddings (ML.GENERATE_EMBEDDING) to KG nodes
-├── query_kg_with_embeddings.py   # Demo agent: natural language → SQL queries with semantic + symbolic filters
+├── build_enriched_dyna.py        # Pipeline: fetch GDELT, extract KG, enrich with MODIS + GBIF + Dynamic World
+├── create_schema_dyna.py         # Creates BigQuery dataset & table schema
+├── enrich_kg_dyna_embeddings.py  # Adds embeddings to KG entities using Vertex AI
+├── query.py                      # Natural language → SQL querying with Gemini
+├── ee_enrichment.py              # Earth Engine integration for Dynamic World enrichment
 ├── config.py                     # User configuration (project_id, dataset_id, region, etc.)
 ├── requirements.txt              # Python dependencies
-└── LICENSE / README.md
+├── LICENSE                       # License file
+├── README.md                     # Project documentation
 ```
 
 ---
 
 ## Setup Instructions
-
-1. **Clone the repository**  
+1. **Clone the repository**
    ```bash
    git clone https://github.com/your-repo/echonexus.git
    cd echonexus
    ```
 
-2. **Install dependencies**  
+2. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-   Requirements include:
+   Includes:
    - `google-cloud-bigquery`
    - `google-cloud-aiplatform`
    - `earthengine-api`
    - `pandas`, `newspaper3k`, etc.
 
-3. **Configure your environment**  
+3. **Configure environment**  
    Edit `config.py` with:
-   - `PROJECT_ID` = your GCP project
-   - `DATASET_ID` = target BigQuery dataset
-   - `VERTEX_AI_LOCATION` and `BIGQUERY_LOCATION` (default: `us-central1`, `US`)
+   - `PROJECT_ID` = your GCP project ID  
+   - `DATASET_ID` = target BigQuery dataset  
+   - `VERTEX_AI_LOCATION` & `BIGQUERY_LOCATION`  
 
-4. **Authenticate Google Cloud & Earth Engine**  
+4. **Authenticate Google Cloud & Earth Engine**
    ```bash
    gcloud auth application-default login
    earthengine authenticate
    ```
 
-5. **Run the pipeline**  
-   - Create schema:
-     ```bash
-     python create_enriched_schema.py
-     ```
-   - Build enriched KG:
-     ```bash
-     python build_enriched_kg.py
-     ```
-   - Add embeddings:
-     ```bash
-     python enrich_kg_with_embeddings.py
-     ```
-   - Query with agent:
-     ```bash
-     python query_kg_with_embeddings.py
-     ```
+5. **Run the pipeline**
+   ```bash
+   python create_schema_dyna.py
+   python build_enriched_dyna.py
+   python enrich_kg_dyna_embeddings.py
+   python query.py
+   ```
 
 ---
 
 ## Example Queries
-The Q&A agent supports hybrid symbolic + semantic search. Examples:
+- **Semantic Search**
+  ```sql
+  Find events about illegal logging or deforestation.
+  ```
 
-1. **Semantic search for deforestation events**
-   ```
-   Find events about illegal logging or deforestation.
-   ```
+- **Filter by MODIS NPP**
+  ```sql
+  List events in areas with vegetation productivity (NPP) < 0.2.
+  ```
 
-2. **Filter by MODIS vegetation health**
-   ```
-   List events in areas with very low vegetation productivity (NPP < 0.2).
-   ```
+- **Aggregate by GBIF species richness**
+  ```sql
+  Show the average species richness around reported pollution events.
+  ```
 
-3. **Aggregate biodiversity context**
-   ```
-   Show the average species richness around reported pollution events.
-   ```
+- **Land cover context**
+  ```sql
+  Find events occurring in cropland.
+  ```
 
-4. **Filter by Dynamic World land cover**
-   ```
-   Find events occurring in cropland.
-   ```
-
-5. **Country-level aggregation**
-   ```
-   Count the number of events per country.
-   ```
+- **Country aggregation**
+  ```sql
+  Count the number of events per country.
+  ```
 
 ---
 
 ## Future Improvements
-- Add **real-time Dynamic World feeds** for fresher context.  
-- Integrate **daily climate/weather data** (NOAA GSOD) for immediate impact assessments.  
-- Expand socio-economic context with **World Bank WDI** when resource limits allow.  
+- Integrate **NOAA weather** and **socio-economic indicators** later if needed.  
+- Develop **dashboards & APIs** for ESG stakeholders.  
 
 ---
 
 ## License
-MIT License. See `LICENSE` file for details.
-
----
-
-## Acknowledgments
-- Google BigQuery Public Datasets  
-- Google Earth Engine Dynamic World  
-- GBIF Occurrence Data  
-- MODIS Net Primary Production (NASA)  
-- Gemini 2.5 Models (Vertex AI)  
-
----
+MIT License. See `LICENSE` file.
